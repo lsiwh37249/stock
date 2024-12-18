@@ -67,8 +67,8 @@ def main():
     selected_stock_code = STOCK_LIST[selected_stock_name]  # 선택된 이름에 해당하는 종목 코드
 
     # 날짜 입력: datetime.date 객체로 변환
-    start_date = st.date_input("Start Date", value=datetime.date(2023, 1, 1))
-    end_date = st.date_input("End Date", value=datetime.date(2023, 12, 1))
+    start_date = st.date_input("Start Date", value=datetime.date(2024, 6, 1))
+    end_date = st.date_input("End Date", value=datetime.date(2024, 12, 17))
 
     # 조건 설정
     days = st.slider("Number of Consecutive Rising Days", min_value=1, max_value=10, value=5)
