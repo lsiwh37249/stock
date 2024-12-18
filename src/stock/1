@@ -1,0 +1,61 @@
+import yfinance as yf
+
+#추후에는 대표 10개만 뽑아서 진
+ALL_STOCKS = [
+    "005930.KS",  # 삼성전자
+    "000660.KS",  # SK하이닉스
+    "051910.KS",  # LG화학
+    "035420.KS",  # NAVER
+    "005380.KS",  # 현대차
+    "035720.KS",  # 카카오
+    "068270.KS",  # 셀트리온
+    "012330.KS",  # 현대모비스
+    "055550.KS",  # 신한지주
+    "017670.KS"   # SK텔레콤
+]
+
+# 데이터 수집 함수
+def fetch_stock_data(ticker, start_date, end_date):
+    """주식 데이터를 가져옵니다."""
+    try:
+        return yf.download(ticker, start=start_date, end=end_date)
+    except Exception as e:
+        print(f"{ticker} 데이터를 가져오는 중 에러 발생: {e}")
+        return None
+
+# 조건식: n일 연속 상승 (종가 상승률이 threshold 이상)
+def is_rising(df, days=5, threshold=0.05):
+    """n일 연속 상승 여부를 판단합니다."""
+    if df is None or len(df) < days:
+        return False
+    df['Change'] = df['Close'].pct_change()
+    return df['Change'].rolling(days).apply(lambda x: (x >= threshold).all(), raw=True).iloc[-1]
+
+# 추천 파이프라인
+def recommend_stocks(start_date, end_date, days=5, threshold=0.05, top_n=20):
+    """거래량 상위 종목 중 조건을 만족하는 주식을 추천합니다."""
+    # 거래량 상위 N개 추출
+    top_stocks = get_top_volume_stocks(ALL_STOCKS, start_date, end_date, top_n)
+    print("거래량 상위 종목:", top_stocks)
+    
+    # 조건식 적용
+    recommendations = []
+    for ticker in top_stocks:
+        df = fetch_stock_data(ticker, start_date, end_date)
+        if is_rising(df, days, threshold):
+            recommendations.append(ticker)
+    return recommendations
+
+# 실행
+if __name__ == "__main__":
+    # 입력 데이터: 기간 및 조건
+    start_date = "2023-01-01"
+    end_date = "2024-12-01"
+    days = 5
+    threshold = 0.05  # 5% 상승 조건
+    top_n = 20  # 거래량 상위 20개
+
+    # 조건 만족 주식 추천
+    stocks = recommend_stocks(start_date, end_date, days, threshold, top_n)
+    print("추천 주식:", stocks)
+
