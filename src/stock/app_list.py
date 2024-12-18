@@ -3,13 +3,29 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import datetime
 
-# 주식 종목 리스트 (예시로 KOSPI 주요 종목 20개)
-ALL_STOCKS = [
-    "005930.KS", "035420.KQ", "000660.KS", "051910.KS", "005380.KS",
-    "035720.KQ", "105560.KQ", "096770.KQ", "066570.KQ", "251270.KQ",
-    "034730.KQ", "017670.KS", "028260.KQ", "003550.KS", "032830.KQ",
-    "012330.KS", "008770.KS", "035000.KS", "003490.KS", "027410.KS"
-]
+# 주식 코드와 이름 매핑 (예시로 KOSPI 주요 종목 20개)
+STOCK_LIST = {
+    "Samsung Electronics": "005930.KS",
+    "Naver": "035420.KQ",
+    "SK hynix": "000660.KS",
+    "Hyundai Motor": "051910.KS",
+    "POSCO": "005380.KS",
+    "Kakao": "035720.KQ",
+    "LG Electronics": "066570.KQ",
+    "Celltrion": "068270.KQ",
+    "Hyundai Mobis": "012330.KS",
+    "Korean Air": "003490.KS",
+    "Amorepacific": "090430.KS",
+    "KT": "030200.KS",
+    "LG Chem": "051910.KS",
+    "SK Telecom": "017670.KS",
+    "SK Innovation": "096770.KQ",
+    "Lotte Chemical": "011170.KS",
+    "KakaoBank": "323410.KQ",
+    "Hana Financial": "086790.KS",
+    "Samsung Biologics": "207940.KQ",
+    "KB Financial": "105560.KQ"
+}
 
 # 데이터 수집
 def fetch_stock_data(ticker, start_date, end_date):
@@ -46,8 +62,9 @@ def main():
     # 제목
     st.title("Stock Price Analysis")
 
-    # 사용자 선택을 위한 종목 리스트 (상위 20개)
-    selected_stock = st.selectbox("Select Stock", ALL_STOCKS)
+    # 사용자 선택을 위한 주식 이름 (STOCK_LIST에서 키를 선택)
+    selected_stock_name = st.selectbox("Select Stock", list(STOCK_LIST.keys()))
+    selected_stock_code = STOCK_LIST[selected_stock_name]  # 선택된 이름에 해당하는 종목 코드
 
     # 날짜 입력: datetime.date 객체로 변환
     start_date = st.date_input("Start Date", value=datetime.date(2023, 1, 1))
@@ -58,7 +75,7 @@ def main():
     threshold = st.slider("Threshold for Rising Percentage", min_value=0.01, max_value=0.1, value=0.05)
 
     # 데이터 가져오기
-    stock_data = fetch_stock_data(selected_stock, start_date, end_date)
+    stock_data = fetch_stock_data(selected_stock_code, start_date, end_date)
     
     if stock_data is not None and not stock_data.empty:
         # 조건식 확인
@@ -67,7 +84,8 @@ def main():
         # 그래프 시각화
         plot_stock_graph(stock_data)
     else:
-        st.write(f"{selected_stock} 데이터가 비어 있습니다.")
+        st.write(f"{selected_stock_name} 데이터가 비어 있습니다.")
 
 if __name__ == "__main__":
     main()
+
