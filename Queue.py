@@ -2,10 +2,11 @@ import asyncio
 
 price_queue = asyncio.Queue()
 
-async def price_collector():
-    while True:
-        price = await get_realtime_price()  # WebSocket callback
-        await price_queue.put(price)
+# async def mock_ws_producer():
+#     for price in [100, 101, 105, 110]:
+#         print("WS 수신:", price)
+#         await price_queue.put(price)
+#         await asyncio.sleep(0.5)
 
 async def strategy_worker():
     while True:
@@ -13,9 +14,8 @@ async def strategy_worker():
         print("전략 판단:", price)
 
 async def main():
-    await asyncio.gather(
-        price_collector(),
-        strategy_worker(),
-    )
+    await asyncio.gather(strategy_worker())
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    asyncio.run(main())
