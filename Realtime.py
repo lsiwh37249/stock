@@ -6,7 +6,7 @@ import ssl
 import asyncio
 import random
 import time
-from Queue import price_queue
+from Queue import raw_queue, preprocess_queue, order_queue
 
 class Realtime:
     def __init__(self):
@@ -39,9 +39,9 @@ class Realtime:
         - 아니면(디버그/동기 단독): put_nowait 시도
         """
         if self.loop is not None and self.loop.is_running():
-            asyncio.run_coroutine_threadsafe(price_queue.put(raw), self.loop)
+            asyncio.run_coroutine_threadsafe(raw_queue.put(raw), self.loop)
             return
-        price_queue.put_nowait(raw)
+        raw_queue.put_nowait(raw)
 
     async def ws_client_async(self, code="000660"):
         """
@@ -54,7 +54,6 @@ class Realtime:
             print("WS 연결 시도")
 
             ws = websocket.WebSocket()
-            # NOTE: 실제 운영은 wss 설정/sslopt가 필요할 수 있음
             ws.connect("ws://ops.koreainvestment.com:21000")
 
             print("WS 연결 성공")
@@ -79,8 +78,10 @@ class Realtime:
 
             while True:
                 raw = ws.recv()
-                self.send_to_queue(raw)  # run_coroutine_threadsafe로 처리됨
-                print(raw)
+                # 별도 스레드에서 직접 run_coroutine_threadsafe 사용
+                asyncio.run_coroutine_threadsafe(raw_queue.put(raw), loop)
+
+                #print(raw)
         
         # 별도 스레드에서 실행
         await loop.run_in_executor(None, _ws_client)
@@ -91,7 +92,6 @@ if __name__ == "__main__":
         r.loop = asyncio.get_running_loop()
         r.auth()
 
-        # WebSocket 클라이언트 실행
         await r.ws_client_async("000660")
 
     asyncio.run(_main())

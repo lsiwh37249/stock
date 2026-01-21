@@ -1,6 +1,6 @@
 from pykis import PyKis, KisAuth, KisQuote, KisBalance
 from Realtime import Realtime
-from Queue import price_queue
+from Queue import raw_queue, preprocess_queue
 import os
 import asyncio
 class Stock():
@@ -14,8 +14,8 @@ class Stock():
         #self.kis = PyKis(KisAuth.load("secret.json"), KisAuth.load("virtual_secret.json"), keep_token=True)
 
     # 시세 조회 
-    def quote(self):
-        stock = self.kis.stock("AAPL")
+    def quote(self, stock_code):
+        stock = self.kis.stock(stock_code)
         quote: KisQuote = stock.quote()
         print(quote)
 
@@ -24,13 +24,14 @@ class Stock():
         balance: KisBalance = account.balance()
         print(repr(balance))
     
+    
     async def real_time_quote(self):
         while True:
-            tick = await price_queue.get()
-            print(f"[STOCK] Queue → 전략: {tick}")
+            # 추출해서 preprocess_queue에 넣기
+            raw = await raw_queue.get()
+            # TODO: 여기서 raw 파싱/전처리 후 preprocess_queue로 넘기기
+            await preprocess_queue.put(raw)
 
-    def order(self):
-        pass
 
     def main(self):
         print("=== 시세 조회 ===")

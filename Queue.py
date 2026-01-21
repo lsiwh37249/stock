@@ -1,4 +1,7 @@
 import asyncio
 
-price_queue = asyncio.Queue()
+raw_queue = asyncio.Queue()
 
+preprocess_queue = asyncio.Queue()
+
+order_queue = asyncio.Queue()
