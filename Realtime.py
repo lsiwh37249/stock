@@ -9,13 +9,14 @@ import time
 from Queue import raw_queue, preprocess_queue, order_queue
 
 class Realtime:
-    def __init__(self):
+    def __init__(self, ticker=None):
         self.APP_KEY = os.environ["REAL_APPKEY"]    
         self.APP_SECRET = os.environ["REAL_APPSECRETKEY"]
         self.ACCESS_TOKEN = None
         self.APPROVAL_KEY = None
         self.WS_URL = "wss://ops.koreainvestment.com:21000"
         self.loop: asyncio.AbstractEventLoop | None = None
+        self.ticker = ticker
 
     def auth(self):
         url = "https://openapi.koreainvestment.com:9443/oauth2/Approval"
@@ -43,7 +44,7 @@ class Realtime:
             return
         raw_queue.put_nowait(raw)
 
-    async def ws_client_async(self, code="000660"):
+    async def ws_client_async(self):
         """
         WebSocket 클라이언트를 별도 스레드에서 실행하는 async 래퍼
         """
@@ -67,8 +68,8 @@ class Realtime:
                 },
                 "body": {
                     "input": {
-                        "tr_id": "H0STASP0",  # 호가 (바로 데이터 옴)
-                        "tr_key": code
+                        "tr_id": "H0STCNT0",  # 호가 (바로 데이터 옴)
+                        "tr_key": self.ticker
                     }
                 }
             }
@@ -79,20 +80,18 @@ class Realtime:
             while True:
                 raw = ws.recv()
                 # 별도 스레드에서 직접 run_coroutine_threadsafe 사용
-                asyncio.run_coroutine_threadsafe(raw_queue.put(raw), loop)
+                asyncio.run_coroutine_threadsafe(preprocess_queue.put(raw), loop)
 
-                #print(raw)
-        
         # 별도 스레드에서 실행
         await loop.run_in_executor(None, _ws_client)
 
 if __name__ == "__main__":
     async def _main():
-        r = Realtime()
+        r = Realtime(ticker="005930")
         r.loop = asyncio.get_running_loop()
         r.auth()
 
-        await r.ws_client_async("000660")
+        await r.ws_client_async()
 
     asyncio.run(_main())
     

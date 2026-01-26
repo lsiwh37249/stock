@@ -5,6 +5,7 @@ from Stock import Stock
 from Queue import raw_queue, preprocess_queue, order_queue
 from Preprocess import Preprocess
 from Order import Order
+from Worker import Worker
 # 수집 -> 테마주 판단 -> 진입 -> 익절/손절 -> 로그 생성 코드 
 
 def create_instance():
@@ -13,21 +14,22 @@ def create_instance():
     realtime = Realtime()
     preproc = Preprocess()
     order = Order()
-    return kis_auth, stock, realtime, preproc, order
+    worker = Worker()
+    return kis_auth, stock, realtime, preproc, order, worker
 
-async def quote(realtime, stock, stock_code, preproc, order):
+async def quote(realtime, stock, ticker, preproc, order,worker):
     # Producer와 Consumer 동시에 실행
     await asyncio.gather(
-        realtime.ws_client_async(stock_code),  # async 래퍼 사용
-        stock.real_time_quote(),
+        realtime.ws_client_async(),  # async 래퍼 사용
         preproc.preprocess(),
-        order.order()
+        order.order(),
+        worker.get_order()
     )
 
 async def main():
     # 클래스 인스턴스 생성성
-    kis_auth, stock, realtime, preproc, order = create_instance()
-
+    kis_auth, stock, realtime, preproc, order, worker = create_instance()
+    worker.kis = kis_auth.main()
     # KisAuth 인증
     kis = kis_auth.main()
     
@@ -36,10 +38,10 @@ async def main():
     realtime.auth()
     
     # 실시간 시세 조회
-    stock_code = "032820"
+    ticker = "005930"
+    realtime.ticker = ticker
     
-    await quote(realtime, stock, stock_code, preproc, order)
-
+    await quote(realtime, stock, ticker, preproc, order, worker)
 
 if __name__ == "__main__":
     asyncio.run(main())

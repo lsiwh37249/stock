@@ -23,14 +23,6 @@ class Stock():
         account = self.kis.account()
         balance: KisBalance = account.balance()
         print(repr(balance))
-    
-    
-    async def real_time_quote(self):
-        while True:
-            # 추출해서 preprocess_queue에 넣기
-            raw = await raw_queue.get()
-            # TODO: 여기서 raw 파싱/전처리 후 preprocess_queue로 넘기기
-            await preprocess_queue.put(raw)
 
 
     def main(self):

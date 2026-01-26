@@ -9,39 +9,76 @@
 # 
 
 import asyncio
-from Queue import order_queue
+from Queue import order_queue, order_worker_queue
+
 
 class Order:
     def __init__(self):
-        self.price_up_ratio = 0.7
-        self.volume_ratio = 1.5
-        self.amount_ratio = 2
-        self.time_window = 3
-        self.cond_index = True
+        self.price_up_ratio_threshold = 0.7
+        self.volume_ratio_threshold = 1.5
+        self.amount_ratio_threshold = 2
+        self.time_window_threshold = 3
+        self.cond_index_threshold = True
         
+    # 조건 생성
     def make_condition(self, data):
-        # data 기반 조건 생성
-        return data
+        # data = {
+        #    "ticker": parts[1],
+        #    "current_price": current_price,
+        #    "trade_volume": trade_volume,
+        #    "trade_amount": trade_amount,
+        #    "acc_volume": acc_volume,
+        #    "date": date,
+        #    "time": time
+        #}
+        
+        #price_up_ratio = data["current_price"] / data["acc_trade_amount"]
+        volume_ratio = data["trade_volume"] / data["acc_volume"]
+        amount_ratio = data["trade_amount"] / data["acc_trade_amount"]
+        
+        conclusion = {
+            "volume_ratio": volume_ratio,
+            "amount_ratio": amount_ratio
+        }        
+        return conclusion
     
     def conclusion(self, data):
-        # 판단 후 주문 진행 + 5개 중에 3개를 만족하면 주문 진행
-        if self.price_up_ratio >= 0.6 and self.volume_ratio >= 1.5 and self.amount_ratio >= 2 and self.time_window >= 5 and self.cond_index == True:
+        condition = self.make_condition(data)
+        if (condition["volume_ratio"] >= self.volume_ratio_threshold) + (condition["amount_ratio"] >= self.amount_ratio_threshold) >= 2 : # 2개 중 2개 이상 조건 만족해야 함
             return True
         else:
             return False
     
     def order_conclusion(self, data):
         if self.conclusion(data):
-            # 주문 진행
-            print("주문 진행")
-            return True
+            # 주문서 작성
+            order_data = {
+                # 시장가 주문문
+                "ticker": data["ticker"],
+                "price": data["current_price"],
+                "quantity": data.get("quantity", data.get("trade_volume", 1)),  # quantity가 없으면 trade_volume 사용
+                "is_buy": True
+            }
+            return order_data
         else:
             # 주문 거절 -> 로그 생성
-            print("주문 거절")
-            return False
+            
+            return {
+                "ticker": "",
+                "price": "",
+                "quantity": "",
+                "is_buy": ""
+            }
         
     async def order(self):
         while True:
-            data = await order_queue.get()
-            order_condition = self.order_conclusion(data)
-            print("order_condition: ", order_condition)
+            try:
+                data = await order_queue.get()
+                order_condition = self.order_conclusion(data)
+                print("order_condition: ", order_condition)
+                #큐에 전송
+                await order_worker_queue.put(order_condition)
+            except Exception as e:
+                print(f"Order error: {e}")
+                import traceback
+                traceback.print_exc()
