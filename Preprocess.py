@@ -5,60 +5,47 @@ from Queue import preprocess_queue, order_queue
 
 class Preprocess:
 
-    def parse_h0stcnt0(self, raw: str) -> dict:
-        """
-        H0STCNT0 실시간 체결 데이터 파서
-        - 현재가격
-        - 체결량
-        - 체결 거래대금 (price * volume)
-        - 누적 거래량
-        - 누적 거래대금
-        """
-        try:
-            # JSON 형식 (구독 성공 응답 등)은 스킵
-            if raw.strip().startswith("{"):
-                return None
-            
-            # 파이프(|) 형식만 처리
-            parts = raw.split("|")
-            if len(parts) < 4 or parts[1] != "H0STCNT0":
-                return None  # H0STCNT0 데이터가 아니거나 형식이 맞지 않음
+    def parse_h0stcnt0(self, raw: str):
+        if raw.strip().startswith("{"):
+            return
 
-            data = parts[3].split("^")
-            
-            # 데이터 필드가 충분한지 확인
-            if len(data) < 14:
-                print(f"Insufficient data fields: {len(data)}")
-                return None
+        parts = raw.split("|")
+        if len(parts) < 4 or parts[1] != "H0STCNT0":
+            return
 
-            current_price = int(data[2])
-            trade_volume = int(data[3])
-            acc_volume = int(data[12])
-            acc_trade_amount = int(data[13])
+        loop = int(parts[2])
 
-            trade_amount = current_price * trade_volume  # 🔥 체결 거래대금
+        for i in range(loop):
+            data = parts[3 + i].split("^")
 
-            date = datetime.now().strftime("%Y-%m-%d")
-            time = datetime.now().strftime("%H:%M:%S")
+            try:
+                ticker_code = data[0]
+                current_price = int(data[2])
+                trade_volume = int(data[3])
+                acc_volume = int(data[12])
+                acc_trade_amount = int(data[13])
 
-            # parts[3]의 첫 번째 요소가 종목코드 (예: "018880")
-            ticker_code = data[0] if len(data) > 0 else ""
-            
-            parsed_data = {
-                "ticker": ticker_code,
-                "current_price": current_price,
-                "trade_volume": trade_volume,
-                "trade_amount": trade_amount,
-                "acc_volume": acc_volume,
-                "acc_trade_amount": acc_trade_amount,
-                "date": date,
-                "time": time,
-            }
-            return parsed_data
+                trade_amount = current_price * trade_volume
 
-        except Exception as e:
-            print("parse error:", e)
-            return None
+                now = datetime.now()
+
+                parsed_data = {
+                    "ticker": ticker_code,
+                    "current_price": current_price,
+                    "trade_volume": trade_volume,
+                    "trade_amount": trade_amount,
+                    "acc_volume": acc_volume,
+                    "acc_trade_amount": acc_trade_amount,
+                    "date": now.strftime("%Y-%m-%d"),
+                    "time": now.strftime("%H:%M:%S"),
+                }
+
+                # 🔥 여기서 queue로 넘김
+                preprocess_queue.put_nowait(parsed_data)
+
+            except (IndexError, ValueError) as e:
+                print("parse error:", e)
+
 
     async def preprocess(self):
         print("Preprocess started - waiting for data...")
