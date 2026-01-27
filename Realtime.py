@@ -81,13 +81,14 @@ class Realtime:
                 raw = ws.recv()
                 # 별도 스레드에서 직접 run_coroutine_threadsafe 사용
                 asyncio.run_coroutine_threadsafe(preprocess_queue.put(raw), loop)
+                
 
         # 별도 스레드에서 실행
         await loop.run_in_executor(None, _ws_client)
 
 if __name__ == "__main__":
     async def _main():
-        r = Realtime(ticker="005930")
+        r = Realtime(ticker="222080")
         r.loop = asyncio.get_running_loop()
         r.auth()
 
