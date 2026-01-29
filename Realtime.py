@@ -79,6 +79,7 @@ class Realtime:
 
             while True:
                 raw = ws.recv()
+                print("raw: ", raw)
                 # 별도 스레드에서 직접 run_coroutine_threadsafe 사용
                 asyncio.run_coroutine_threadsafe(preprocess_queue.put(raw), loop)
                 

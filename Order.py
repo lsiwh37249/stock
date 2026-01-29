@@ -15,36 +15,37 @@ from Queue import order_queue, order_worker_queue
 class Order:
     def __init__(self):
         self.price_up_ratio_threshold = 0.7
-        self.volume_ratio_threshold = 1.5
-        self.amount_ratio_threshold = 2
-        self.time_window_threshold = 3
+        self.volume_ratio_threshold = 1
+        self.amount_ratio_threshold = 0
+        self.time_window_threshold = 0
         self.cond_index_threshold = True
+        self.prev_volumes = []
+        self.prev_amounts = []
         
     # 조건 생성
     def make_condition(self, data):
-        # data = {
-        #    "ticker": parts[1],
-        #    "current_price": current_price,
-        #    "trade_volume": trade_volume,
-        #    "trade_amount": trade_amount,
-        #    "acc_volume": acc_volume,
-        #    "date": date,
-        #    "time": time
-        #}
+        current_volume = data["trade_volume"]
         
-        #price_up_ratio = data["current_price"] / data["acc_trade_amount"]
-        volume_ratio = data["trade_volume"] / data["acc_volume"]
-        amount_ratio = data["trade_amount"] / data["acc_trade_amount"]
+        # 이전 평균 거래량 계산 (최근 5틱)
+        if len(self.prev_volumes) >= 5:
+            avg_prev_volume = sum(self.prev_volumes[-5:]) / 5
+        else:
+            avg_prev_volume = max(1, sum(self.prev_volumes) / max(1, len(self.prev_volumes)))
         
+        # 거래량 급등 판단
+        volume_ratio = current_volume / avg_prev_volume
+        
+        self.prev_volumes.append(current_volume)
+
         conclusion = {
             "volume_ratio": volume_ratio,
-            "amount_ratio": amount_ratio
+            #"amount_ratio": amount_ratio
         }        
         return conclusion
     
     def conclusion(self, data):
         condition = self.make_condition(data)
-        if (condition["volume_ratio"] >= self.volume_ratio_threshold) + (condition["amount_ratio"] >= self.amount_ratio_threshold) >= 2 : # 2개 중 2개 이상 조건 만족해야 함
+        if (condition["volume_ratio"] >= self.volume_ratio_threshold): 
             return True
         else:
             return False
@@ -53,10 +54,10 @@ class Order:
         if self.conclusion(data):
             # 주문서 작성
             order_data = {
-                # 시장가 주문문
+                # 시장가 주문
                 "ticker": data["ticker"],
                 "price": data["current_price"],
-                "quantity": data.get("quantity", data.get("trade_volume", 1)),  # quantity가 없으면 trade_volume 사용
+                "quantity": data.get("quantity", 1),  # quantity가 없으면 trade_volume 사용
                 "is_buy": True
             }
             return order_data
@@ -75,9 +76,12 @@ class Order:
             try:
                 data = await order_queue.get()
                 order_condition = self.order_conclusion(data)
-                print("order_condition: ", order_condition)
-                #큐에 전송
-                await order_worker_queue.put(order_condition)
+                # 주문 조건 만족할 때만 worker 큐에 넣음 (불만족 시 큐에 쌓이지 않음)
+                if order_condition.get("ticker"):
+                    print("order_condition: ", order_condition)
+                    await order_worker_queue.put(order_condition)
+                else:
+                    print("주문 조건 불만족, 스킵")
             except Exception as e:
                 print(f"Order error: {e}")
                 import traceback
